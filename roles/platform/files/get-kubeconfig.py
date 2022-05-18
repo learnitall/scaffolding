@@ -7,10 +7,8 @@ Use `google-auth` module to get an OAuth bearer token for the given
 service account, which can then be passed to kubectl in order to
 authenticate to the cluster.
 
-The token does expire, however re-running this script will refresh
-the token when needed.
-
 References:
+* https://kubernetes.io/docs/reference/access-authn-authz/authentication/#client-go-credential-plugins
 * https://github.com/mie00/gke-kubeconfig
 * https://google-auth.readthedocs.io/en/master/user-guide.html
 
@@ -39,7 +37,14 @@ clusters:
 users:
 - name: my-gke-sa-user
   user:
-    token: {user_token}
+    exec:
+      command: "python3"
+      args:
+      - "{script_path}"
+      - "auth"
+      - "{sa_path}"
+      apiVersion: "client.authentication.k8s.io/v1"
+      interactiveMode: Never
 contexts:
 - context:
     cluster: {cluster_name}
@@ -57,7 +62,12 @@ def get_google_sa_token(path_to_sa: str) -> str:
         path_to_sa,
         scopes=[
             GOOGLE_AUTH_API_BASE + scope
-            for scope in ("userinfo.email", "cloud-platform")
+            for scope in (
+                "userinfo.email",
+                "cloud-platform",
+                "compute",
+                "appengine.admin",
+            )
         ],
     )
     credentials.refresh(Request())
@@ -69,7 +79,8 @@ def build_kubeconfig(
     cluster_server: str,
     cluster_name: str,
     cluster_ca: str,
-    user_token: str,
+    sa_path: str,
+    script_path: str,
 ) -> str:
     """Use the given arguments to build a kubeconfig."""
 
@@ -77,7 +88,8 @@ def build_kubeconfig(
         cluster_name=cluster_name,
         cluster_server=cluster_server,
         cluster_ca=cluster_ca,
-        user_token=user_token,
+        sa_path=sa_path,
+        script_path=script_path,
     )
 
 
@@ -135,21 +147,34 @@ def create_argument_parser() -> argparse.ArgumentParser:
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "gcp_ansible_json",
-        help="File path to output of google.cloud.gcp_container_cluster",
+        "mode",
+        choices=("generate", "auth"),
+        help="Mode to operate in. Use 'generate' to create a kubeconfig"
+        "and use 'plugin' to act as a kubectl auth plugin",
     )
     parser.add_argument(
         "service_account_file", help="Path to private key of Google IAM service account"
     )
-    parser.add_argument("kubeconfig_dest", help="Destination of kubeconfig")
+    parser.add_argument(
+        "--gcp-ansible-json",
+        help="File path to output of google.cloud.gcp_container_cluster",
+    )
+    parser.add_argument("--kubeconfig-dest", help="Destination of kubeconfig")
 
     return parser
 
 
-def main() -> None:
+def generate(args: argparse.Namespace) -> None:
+    """
+    Generate kubeconfig for ansible-provisioned cluster
+    """
+
     setup_logging()
-    parser = create_argument_parser()
-    args = parser.parse_args()
+
+    if args.gcp_ansible_json is None or args.kubeconfig_dest is None:
+        logging.fatal(
+            "Generate mode requires both --gcp-ansible-json and " "--kubeconfig-dest"
+        )
 
     logging.info(
         "Parsing through gcp_container_cluster json: %s",
@@ -162,8 +187,8 @@ def main() -> None:
     )
 
     logging.info("Getting token for sa authentication")
-    user_token = get_google_sa_token(args.service_account_file)
-    kubeconfig_args["user_token"] = user_token
+    kubeconfig_args["sa_path"] = args.service_account_file
+    kubeconfig_args["script_path"] = os.path.abspath(__file__)
 
     kubeconfig = build_kubeconfig(KUBECONFIG_TEMPLATE, **kubeconfig_args)
     with open(args.kubeconfig_dest, "w") as kubeconfig_file_handler:
@@ -173,6 +198,39 @@ def main() -> None:
     os.environ["KUBECONFIG"] = args.kubeconfig_dest
     run_kubectl_command("config view")
     run_kubectl_command("get nodes")
+
+
+def auth(args: argparse.Namespace) -> None:
+    """
+    Print bearer authentication token for kubectl
+
+    References:
+    * https://kubernetes.io/docs/reference/access-authn-authz/authentication/#client-go-credential-plugins
+    """
+
+    token = get_google_sa_token(args.service_account_file)
+    print(
+        json.dumps(
+            {
+                "apiVersion": "client.authentication.k8s.io/v1",
+                "kind": "ExecCredential",
+                "status": {"token": token},
+            }
+        )
+    )
+
+
+def main() -> None:
+
+    parser = create_argument_parser()
+    args = parser.parse_args()
+
+    modes = {
+        "generate": generate,
+        "auth": auth,
+    }
+
+    return modes.get(args.mode, lambda a: None)(args)
 
 
 if __name__ == "__main__":

@@ -114,7 +114,7 @@
 
   - name: Generate kubeconfig due to - https://github.com/ansible/ansible/issues/66096
     shell: |
-      python3 {{role_path}}/files/get-kubeconfig.py {{archive_dir}}/cluster.json {{gke['sa_file']}} {{archive_dir}}/kubeconfig
+      python3 {{role_path}}/files/get-kubeconfig.py generate --gcp-ansible-json {{archive_dir}}/cluster.json --kubeconfig-dest {{archive_dir}}/kubeconfig {{gke['sa_file']}}
 
   - set_fact:
       kubeconfig: "{{archive_dir}}/kubeconfig"
