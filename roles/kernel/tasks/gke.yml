@@ -55,11 +55,12 @@
     shell: |
       set -eo pipefail
       export KUBECONFIG={{kubeconfig}}
+      expected_kernel="$(echo "{{ kernel }}" | sed 's/[^0-9]*\([0-9rc.-]\+\)/\1/')"
       kernels=$(kubectl get nodes -o go-template --template {% raw %}'{{range .items}}{{.status.nodeInfo.kernelVersion}}{{" "}}{{end}}'{% endraw %})
       echo "Looking for matches on {{ kernel }}"
       for kernel in $kernels
       do
-          if [[ $kernel != {{ kernel }}* ]]
+          if [[ $kernel != *"${expected_kernel}"* ]]
           then
               echo "Did not match: $kernel"
               exit 1
