@@ -83,7 +83,7 @@ wait_cilium_ready() {
     wait_ready
     $ARTIFACTS/cilium status --wait --wait-duration=1m
 
-    if [ "$SKIP_CT" != "skip-ct" ]
+    if [ "$SKIP_CT" == "" ]
     then
         $ARTIFACTS/cilium connectivity test
         kubectl delete ns cilium-test
