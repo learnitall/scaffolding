@@ -1,0 +1,6 @@
+image:
+  override: quay.io/learnitall0/cilium-dev:curl-cilium-v1.14.0-snapshot.2
+pprof:
+  enabled: true
+  address: localhost
+  port: 6060
