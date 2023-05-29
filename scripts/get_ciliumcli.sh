@@ -15,7 +15,7 @@ then
     shift 1
 fi
 
-CILIUM_CLI_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/cilium-cli/master/stable.txt)
+CILIUM_CLI_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/cilium-cli/main/stable.txt)
 GOOS=$(go env GOOS)
 GOARCH=$(go env GOARCH)
 
