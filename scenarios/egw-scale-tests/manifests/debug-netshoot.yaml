@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: egw-debug
+spec:
+  containers:
+  - image: nicolaka/netshoot
+    name: netshoot
+    command:
+    - sleep
+    - infinity

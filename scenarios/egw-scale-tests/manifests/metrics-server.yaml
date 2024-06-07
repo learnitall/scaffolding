@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: egw-metrics-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: egw-metrics-server
+  template:
+    metadata:
+      labels:
+        name: egw-metrics-server
+    spec:
+      nodeSelector:
+        role.scaffolding: metrics
+      containers:
+      - name: metrics-server
+        image: quay.io/cilium-dev/egw-scale-test:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 2112
+        args:
+          - "metrics-server"
+          - "--listen-port=2112"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: metrics-server-svc
+spec:
+  selector:
+    name: egw-metrics-server
+  ports:
+  - protocol: TCP
+    port: 2112
+    targetPort: 2112

@@ -1,0 +1,14 @@
+nodeSelector:
+  kubernetes.io/os: linux
+  cilium.scaffolding: "yes"
+egressGateway:
+  enabled: true
+bpf:
+  masquerade: true
+kubeProxyReplacement: true
+l7Proxy: false
+k8sServicePort: 6443
+routingMode: native
+autoDirectNodeRoutes: true
+endpointRoutes:
+  enabled: true

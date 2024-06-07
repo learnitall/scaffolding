@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: egw-external-target
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: egw-external-target
+  template:
+    metadata:
+      labels:
+        name: egw-external-target
+    spec:
+      hostNetwork: true
+      nodeSelector:
+        role.scaffolding: external
+      tolerations:
+      - key: node.kubernetes.io/not-ready
+        operator: Exists
+        effect: NoSchedule
+      containers:
+      - name: external-target
+        image: quay.io/cilium-dev/egw-scale-test:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 1337
+        args: 
+          - "external-target"
+          - "--allowed-cidr=${ALLOWED_CIDR}"
+          - "--listen-port=1337" 

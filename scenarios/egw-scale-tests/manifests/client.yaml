@@ -1,0 +1,32 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: egw-client
+spec:
+  completions: ${N}
+  parallelism: ${N}
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 0
+  template:
+    metadata:
+      labels:
+        name: egw-client
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: egw-client
+        image: quay.io/cilium-dev/egw-scale-test:latest
+        imagePullPolicy: IfNotPresent
+        args:
+          - "client"
+          - "--external-target-addr=${EXTERNAL_TARGET}"
+          - "--metrics-server-addr=metrics-server-svc.default.svc.cluster.local:2112"
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
